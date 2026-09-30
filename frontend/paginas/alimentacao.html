@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym100% — Alimentação</title>
+<link rel="stylesheet" href="../css/estilo.css">
+</head>
+<body>
+
+<nav class="barra-nav">
+    <div class="container">
+        <div class="marca">GYM<span>100%</span></div>
+        <div class="nav-links">
+            <a href="dashboard.html">Painel</a>
+            <a href="progresso.html">Progresso</a>
+            <a href="alimentacao.html" class="ativo">Alimentação</a>
+            <a href="amigos.html">Amigos</a>
+            <a href="desafios.html">Desafios</a>
+        </div>
+        <div class="utilizador-atual">
+            <div class="avatar-circulo" id="inicialAvatar">?</div>
+            <span id="nomeUtilizadorNav">...</span>
+            <a href="#" class="botao botao-secundario botao-pequeno" onclick="terminarSessao(); return false;">Sair</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="cabecalho-pagina" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1>Alimentação</h1>
+            <p>O que comeste hoje, <span id="dataEscolhidaTexto"></span>.</p>
+        </div>
+        <input type="date" id="seletorData" style="background:var(--cartao); border:1px solid var(--linha); color:var(--branco); padding:10px 14px; border-radius:3px;">
+    </div>
+
+    <div class="grelha grelha-2" style="margin-bottom: 24px;">
+        <div class="cartao">
+            <h3 style="margin-bottom: 16px;">Resumo do dia</h3>
+            <div style="margin-bottom: 14px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.88rem; margin-bottom:4px;">
+                    <span>Calorias</span><span id="textoCaloriasResumo">0 / 2000 kcal</span>
+                </div>
+                <div class="barra-progresso-fundo"><div class="barra-progresso-cheia" id="barraCalorias" style="width:0%;"></div></div>
+            </div>
+            <div class="grelha grelha-3">
+                <div class="estatistica"><div class="numero" id="statProteina" style="font-size:1.6rem;">0g</div><div class="rotulo">Proteína</div></div>
+                <div class="estatistica"><div class="numero" id="statHidratos" style="font-size:1.6rem;">0g</div><div class="rotulo">Hidratos</div></div>
+                <div class="estatistica"><div class="numero" id="statGordura" style="font-size:1.6rem;">0g</div><div class="rotulo">Gordura</div></div>
+            </div>
+        </div>
+
+        <div class="cartao">
+            <h3 style="margin-bottom: 16px;">Definir as tuas metas diárias</h3>
+            <form id="formularioMetas" class="grelha grelha-2">
+                <div class="campo"><label>Calorias</label><input type="number" id="metaCalorias"></div>
+                <div class="campo"><label>Proteína (g)</label><input type="number" id="metaProteina"></div>
+                <div class="campo"><label>Hidratos (g)</label><input type="number" id="metaHidratos"></div>
+                <div class="campo"><label>Gordura (g)</label><input type="number" id="metaGordura"></div>
+                <button type="submit" class="botao botao-secundario" style="grid-column: 1 / -1;">Atualizar metas</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="cartao">
+        <h3 style="margin-bottom: 16px;">Adicionar refeição</h3>
+        <div class="mensagem-erro" id="caixaErro"></div>
+        <form id="formularioRefeicao" class="grelha" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; align-items:end; gap: 10px;">
+            <div class="campo" style="margin-bottom:0;"><label>Nome</label><input type="text" id="nomeRefeicao" required placeholder="Ex: Peito de frango com arroz"></div>
+            <div class="campo" style="margin-bottom:0;">
+                <label>Tipo</label>
+                <select id="tipoRefeicao">
+                    <option value="pequeno_almoco">Pequeno-almoço</option>
+                    <option value="almoco">Almoço</option>
+                    <option value="lanche">Lanche</option>
+                    <option value="jantar">Jantar</option>
+                    <option value="ceia">Ceia</option>
+                </select>
+            </div>
+            <div class="campo" style="margin-bottom:0;"><label>Kcal</label><input type="number" id="caloriasRefeicao" required></div>
+            <div class="campo" style="margin-bottom:0;"><label>Prot. (g)</label><input type="number" id="proteinaRefeicao"></div>
+            <div class="campo" style="margin-bottom:0;"><label>Hid. (g)</label><input type="number" id="hidratosRefeicao"></div>
+            <div class="campo" style="margin-bottom:0;"><label>Gord. (g)</label><input type="number" id="gorduraRefeicao"></div>
+            <button type="submit" class="botao botao-principal">Adicionar</button>
+        </form>
+    </div>
+
+    <div class="cartao" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 14px;">Refeições registadas</h3>
+        <ul class="lista-simples" id="listaRefeicoes">
+            <li class="vazio" style="width:100%;">A carregar…</li>
+        </ul>
+    </div>
+</div>
+
+<div class="rodape">Gym100% — feito por quem não falta a um treino.</div>
+
+<script src="../js/comum.js"></script>
+<script>
+const rotulosTipo = {
+    pequeno_almoco: "Pequeno-almoço", almoco: "Almoço", lanche: "Lanche", jantar: "Jantar", ceia: "Ceia"
+};
+
+const seletorData = document.getElementById("seletorData");
+seletorData.valueAsDate = new Date();
+
+async function carregarMetas() {
+    const metas = await chamarApi("/api/alimentacao.php?acao=metas");
+    document.getElementById("metaCalorias").value = metas.calorias_meta;
+    document.getElementById("metaProteina").value = metas.proteina_meta;
+    document.getElementById("metaHidratos").value = metas.hidratos_meta;
+    document.getElementById("metaGordura").value = metas.gordura_meta;
+    return metas;
+}
+
+async function carregarRefeicoes() {
+    const data = seletorData.value;
+    document.getElementById("dataEscolhidaTexto").textContent = formatarData(data);
+
+    const refeicoes = await chamarApi(`/api/alimentacao.php?data=${data}`);
+    const lista = document.getElementById("listaRefeicoes");
+    lista.innerHTML = "";
+
+    let totalCal = 0, totalProt = 0, totalHid = 0, totalGord = 0;
+
+    if (refeicoes.length === 0) {
+        lista.innerHTML = `<li class="vazio" style="width:100%;">Ainda não registaste refeições neste dia.</li>`;
+    } else {
+        refeicoes.forEach(r => {
+            totalCal += Number(r.calorias);
+            totalProt += Number(r.proteina_g);
+            totalHid += Number(r.hidratos_g);
+            totalGord += Number(r.gordura_g);
+            lista.innerHTML += `<li>
+                <span><span class="pilula" style="margin-right:10px;">${rotulosTipo[r.tipo]}</span>${r.nome}</span>
+                <span>${r.calorias} kcal &nbsp; <a href="#" onclick="apagarRefeicao(${r.id}); return false;" style="color:var(--vermelho);">remover</a></span>
+            </li>`;
+        });
+    }
+
+    const metas = await carregarMetas();
+    document.getElementById("textoCaloriasResumo").textContent = `${totalCal} / ${metas.calorias_meta} kcal`;
+    document.getElementById("barraCalorias").style.width = Math.min(100, (totalCal / metas.calorias_meta) * 100) + "%";
+    document.getElementById("statProteina").textContent = totalProt + "g";
+    document.getElementById("statHidratos").textContent = totalHid + "g";
+    document.getElementById("statGordura").textContent = totalGord + "g";
+}
+
+async function apagarRefeicao(id) {
+    await chamarApi("/api/alimentacao.php", { method: "DELETE", body: JSON.stringify({ id }) });
+    carregarRefeicoes();
+}
+
+seletorData.addEventListener("change", carregarRefeicoes);
+
+document.getElementById("formularioRefeicao").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const caixaErro = document.getElementById("caixaErro");
+    try {
+        await chamarApi("/api/alimentacao.php", {
+            method: "POST",
+            body: JSON.stringify({
+                nome: document.getElementById("nomeRefeicao").value,
+                tipo: document.getElementById("tipoRefeicao").value,
+                data_refeicao: seletorData.value,
+                calorias: document.getElementById("caloriasRefeicao").value,
+                proteina_g: document.getElementById("proteinaRefeicao").value || 0,
+                hidratos_g: document.getElementById("hidratosRefeicao").value || 0,
+                gordura_g: document.getElementById("gorduraRefeicao").value || 0
+            })
+        });
+        e.target.reset();
+        carregarRefeicoes();
+    } catch (erro) {
+        mostrarErro(caixaErro, erro.message);
+    }
+});
+
+document.getElementById("formularioMetas").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await chamarApi("/api/alimentacao.php?acao=metas", {
+        method: "POST",
+        body: JSON.stringify({
+            calorias_meta: document.getElementById("metaCalorias").value,
+            proteina_meta: document.getElementById("metaProteina").value,
+            hidratos_meta: document.getElementById("metaHidratos").value,
+            gordura_meta: document.getElementById("metaGordura").value
+        })
+    });
+    carregarRefeicoes();
+});
+
+(async () => {
+    const info = await protegerPagina();
+    if (!info) return;
+    carregarRefeicoes();
+})();
+</script>
+</body>
+</html>

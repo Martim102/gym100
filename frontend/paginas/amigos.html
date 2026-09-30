@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym100% — Amigos</title>
+<link rel="stylesheet" href="../css/estilo.css">
+</head>
+<body>
+
+<nav class="barra-nav">
+    <div class="container">
+        <div class="marca">GYM<span>100%</span></div>
+        <div class="nav-links">
+            <a href="dashboard.html">Painel</a>
+            <a href="progresso.html">Progresso</a>
+            <a href="alimentacao.html">Alimentação</a>
+            <a href="amigos.html" class="ativo">Amigos</a>
+            <a href="desafios.html">Desafios</a>
+        </div>
+        <div class="utilizador-atual">
+            <div class="avatar-circulo" id="inicialAvatar">?</div>
+            <span id="nomeUtilizadorNav">...</span>
+            <a href="#" class="botao botao-secundario botao-pequeno" onclick="terminarSessao(); return false;">Sair</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="cabecalho-pagina">
+        <h1>Amigos</h1>
+        <p>Treinar sozinho é mais difícil. Junta gente à tua volta.</p>
+    </div>
+
+    <div class="cartao" style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 14px;">Encontrar pessoas</h3>
+        <div style="display:flex; gap:10px; margin-bottom: 16px;">
+            <input type="text" id="campoPesquisa" placeholder="Procura por nome ou email..."
+                   style="flex:1; background:var(--preto-suave); border:1px solid var(--linha); color:var(--branco); padding:11px 14px; border-radius:3px;">
+            <button class="botao botao-principal" onclick="pesquisarUtilizadores()">Pesquisar</button>
+        </div>
+        <ul class="lista-simples" id="listaResultadosPesquisa"></ul>
+    </div>
+
+    <div class="grelha grelha-2">
+        <div class="cartao">
+            <h3 style="margin-bottom: 14px;">Pedidos pendentes</h3>
+            <ul class="lista-simples" id="listaPedidos">
+                <li class="vazio" style="width:100%;">A carregar…</li>
+            </ul>
+        </div>
+
+        <div class="cartao">
+            <h3 style="margin-bottom: 14px;">Os teus amigos</h3>
+            <ul class="lista-simples" id="listaAmigos">
+                <li class="vazio" style="width:100%;">A carregar…</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="rodape">Gym100% — feito por quem não falta a um treino.</div>
+
+<script src="../js/comum.js"></script>
+<script>
+async function pesquisarUtilizadores() {
+    const termo = document.getElementById("campoPesquisa").value.trim();
+    const lista = document.getElementById("listaResultadosPesquisa");
+    if (termo === "") { lista.innerHTML = ""; return; }
+
+    const resultados = await chamarApi(`/api/amigos.php?acao=pesquisar&termo=${encodeURIComponent(termo)}`);
+    lista.innerHTML = "";
+    if (resultados.length === 0) {
+        lista.innerHTML = `<li class="vazio" style="width:100%;">Ninguém encontrado com esse nome ou email.</li>`;
+        return;
+    }
+    resultados.forEach(u => {
+        lista.innerHTML += `<li>
+            <span><span class="avatar-circulo" style="width:28px; height:28px; font-size:0.7rem; margin-right:10px; display:inline-flex;">${u.nome.charAt(0).toUpperCase()}</span>${u.nome}</span>
+            <button class="botao botao-secundario botao-pequeno" onclick="pedirAmizade(${u.id}, this)">Adicionar</button>
+        </li>`;
+    });
+}
+
+async function pedirAmizade(id, botao) {
+    await chamarApi("/api/amigos.php?acao=pedir", { method: "POST", body: JSON.stringify({ amigo_id: id }) });
+    botao.textContent = "Pedido enviado";
+    botao.disabled = true;
+}
+
+async function carregarPedidos() {
+    const pedidos = await chamarApi("/api/amigos.php?acao=pedidos");
+    const lista = document.getElementById("listaPedidos");
+    lista.innerHTML = "";
+    if (pedidos.length === 0) {
+        lista.innerHTML = `<li class="vazio" style="width:100%;">Sem pedidos por aceitar.</li>`;
+        return;
+    }
+    pedidos.forEach(p => {
+        lista.innerHTML += `<li>
+            <span>${p.nome}</span>
+            <span>
+                <button class="botao botao-principal botao-pequeno" onclick="aceitarPedido(${p.de_id})">Aceitar</button>
+                <button class="botao botao-perigo botao-pequeno" onclick="removerAmizade(${p.de_id})">Recusar</button>
+            </span>
+        </li>`;
+    });
+}
+
+async function carregarAmigos() {
+    const amigos = await chamarApi("/api/amigos.php");
+    const lista = document.getElementById("listaAmigos");
+    lista.innerHTML = "";
+    if (amigos.length === 0) {
+        lista.innerHTML = `<li class="vazio" style="width:100%;">Ainda não tens amigos no Gym100%. Pesquisa acima.</li>`;
+        return;
+    }
+    amigos.forEach(a => {
+        lista.innerHTML += `<li>
+            <span><span class="avatar-circulo" style="width:28px; height:28px; font-size:0.7rem; margin-right:10px; display:inline-flex;">${a.nome.charAt(0).toUpperCase()}</span>${a.nome}</span>
+            <span class="pilula">${a.total_treinos} treinos</span>
+        </li>`;
+    });
+}
+
+async function aceitarPedido(deId) {
+    await chamarApi("/api/amigos.php?acao=aceitar", { method: "POST", body: JSON.stringify({ de_id: deId }) });
+    carregarPedidos();
+    carregarAmigos();
+}
+
+async function removerAmizade(outroId) {
+    await chamarApi("/api/amigos.php?acao=remover", { method: "POST", body: JSON.stringify({ outro_id: outroId }) });
+    carregarPedidos();
+    carregarAmigos();
+}
+
+document.getElementById("campoPesquisa").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); pesquisarUtilizadores(); }
+});
+
+(async () => {
+    const info = await protegerPagina();
+    if (!info) return;
+    carregarPedidos();
+    carregarAmigos();
+})();
+</script>
+</body>
+</html>
